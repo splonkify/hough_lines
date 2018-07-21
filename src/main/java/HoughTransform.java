@@ -3,13 +3,14 @@
 //david@davidchatting.com
 //---
 
-import java.awt.image.BufferedImage; 
-import java.awt.*; 
-import java.util.Vector; 
-import java.io.File; 
+import javafx.scene.image.Image;
+import javafx.scene.image.PixelReader;
+import javafx.scene.image.WritablePixelFormat;
 
-import java.util.Collections; 
-import processing.core.PImage;
+import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /** 
  * <p/> 
@@ -83,28 +84,12 @@ public class HoughTransform extends Thread {
   private double[] sinCache; 
   private double[] cosCache; 
 
-  public HoughTransform(PImage image) {
-    initialise(image.width, image.height); 
-    addPoints((BufferedImage)image.getImage());
-  }
-
-  public HoughTransform(BufferedImage image) {
-    initialise(image.getWidth(), image.getHeight()); 
+  public HoughTransform(Image image) {
+    initialise((int) image.getWidth(), (int) image.getHeight());
     addPoints(image);
   }
 
-  /** 
-   * Initialises the hough transform. The dimensions of the input image are needed 
-   * in order to initialise the hough array. 
-   * 
-   * @param width  The width of the input image 
-   * @param height The height of the input image 
-   */
-  public HoughTransform(int width, int height) { 
-    initialise(width, height);
-  } 
-
-  /** 
+  /**
    * Initialises the hough array. Called by the constructor so you don't need to call it 
    * yourself, however you can use it to reset the transform if you want to plug in another 
    * image (although that image must have the same width and height) 
@@ -143,13 +128,21 @@ public class HoughTransform extends Thread {
    * Adds points from an image. The image is assumed to be greyscale black and white, so all pixels that are 
    * not black are counted as edges. The image should have the same dimensions as the one passed to the constructor. 
    */
-  public void addPoints(BufferedImage image) { 
+  public void addPoints(Image image) {
+    PixelReader pixelReader = image.getPixelReader();
+    WritablePixelFormat<IntBuffer> format = WritablePixelFormat.getIntArgbInstance();
+    int[] buffer = new int[width * height];
+    pixelReader.getPixels(0, 0,
+            width, height,
+            format, buffer, 0, width);
 
     // Now find edge points and update the hough array 
-    for (int x = 0; x < image.getWidth(); x++) { 
-      for (int y = 0; y < image.getHeight(); y++) { 
+    for (int x = 0; x < width; x++) {
+      for (int y = 0; y < height; y++) {
+        int color = buffer[x + (y * width)];
+
         // Find non-black pixels 
-        if ((image.getRGB(x, y) & 0x000000ff) != 0) { 
+        if ((color & 0x000000ff) != 0) {
           addPoint(x, y);
         }
       }
@@ -180,20 +173,20 @@ public class HoughTransform extends Thread {
     numPoints++;
   } 
 
-  public Vector<HoughLine> getLines(int n) {
+  public List<HoughLine> getLines(int n) {
     return(getLines(n, 0));
   }
 
   /** 
    * Once points have been added in some way this method extracts the lines and returns them as a Vector 
-   * of HoughLine objects, which can be used to draw on the 
+   * of src.main.java.HoughLine objects, which can be used to draw on the
    * 
-   * @param percentageThreshold The percentage threshold above which lines are determined from the hough array 
+   * @param threshold The percentage threshold above which lines are determined from the hough array
    */
-  public Vector<HoughLine> getLines(int n, int threshold) { 
+  public List<HoughLine> getLines(int n, int threshold) {
 
     // Initialise the vector of lines that we'll return 
-    Vector<HoughLine> lines = new Vector<HoughLine>(20); 
+    List<HoughLine> lines = new ArrayList<>(20);
 
     // Only proceed if the hough array is not empty 
     if (numPoints == 0) return lines; 
@@ -231,12 +224,8 @@ loop:
       }
     }
     Collections.sort(lines, Collections.reverseOrder());
-    lines.setSize(n);
 
-    return lines;
+    return lines.subList(0, n);
   } 
-
-  public void fitLine(HoughLine l) {
-  }
 }
 

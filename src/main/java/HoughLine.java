@@ -4,7 +4,6 @@
 //---
 
 import java.awt.geom.Line2D;
-import java.awt.image.BufferedImage;
 
 /** 
  * Represents a linear line as detected by the hough transform. 
